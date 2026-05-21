@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="CryptoBot"/>
+  <meta name="theme-color" content="#0a0d14"/>
+  <title>CryptoBot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#ffffff;--muted:#adbac7;--dim:#cdd9e5;--green:#3fb950;--red:#f85149;--amber:#e3b341;--blue:#79c0ff;--safe:env(safe-area-inset-top,0px)}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;overflow-x:hidden}
+    body{padding-top:max(var(--safe),12px)}
+    .app{max-width:960px;margin:0 auto;padding:0 16px 40px}
+
+    /* Header */
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-top:8px}
+    .logo{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#fff;letter-spacing:-1px}
+    .logo span{color:var(--green)}
+    .subtitle{font-size:8px;letter-spacing:2px;color:var(--muted);margin-top:2px}
+    .status-row{display:flex;align-items:center;gap:6px;margin-top:3px}
+    .status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .status-dot.live{background:var(--green);animation:pulse 1.5s infinite}
+    .status-dot.stopped{background:var(--dim)}
+    .status-dot.error{background:var(--red)}
+    .status-text{font-size:8px;letter-spacing:1px;color:var(--text)}
+    .btn-group{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:none;border-radius:8px;font-family:'Space Mono',monospace;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:1px;padding:8px 14px;font-size:9px}
+    .btn:active{transform:scale(0.96)}
+    .btn-start{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid rgba(0,255,136,0.3)}
+    .btn-start.active{background:rgba(255,68,102,0.15);color:var(--red);border-color:rgba(255,68,102,0.3)}
+    .btn-sm{background:rgba(124,139,171,0.1);color:var(--dim);border:1px solid var(--border)}
+
+    /* Mode bar */
+    .mode-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+    .mode-label{font-size:8px;letter-spacing:2px;color:var(--dim)}
+    .mode-value{font-size:11px;font-weight:700}
+    .mode-value.droogloop{color:var(--amber)}
+    .mode-value.live{color:var(--red)}
+    .live-warning{font-size:8px;color:rgba(255,68,102,0.7);margin-top:3px;display:none}
+    .toggle-wrap{display:flex;align-items:center;gap:6px}
+    .toggle-label{font-size:8px;color:var(--dim)}
+    .toggle{position:relative;width:40px;height:22px}
+    .toggle input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;cursor:pointer;inset:0;background:#1a2235;border-radius:22px;transition:.3s}
+    .toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--dim);border-radius:50%;transition:.3s}
+    input:checked+.toggle-slider{background:rgba(255,68,102,0.3)}
+    input:checked+.toggle-slider:before{transform:translateX(18px);background:var(--red)}
+
+    /* Balance */
+    .balance-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+    .balance-title{font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:8px}
+    .balance-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+    .bal-label{font-size:8px;color:var(--dim);margin-bottom:2px}
+    .bal-value{font-size:11px;font-weight:700;color:#fff}
+
+    /* Strategie vergelijking */
+    .strategies-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    @media(max-width:600px){.strategies-grid{grid-template-columns:1fr}}
+    .strategy-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .strategy-card.active-strategy{border-color:var(--green)}
+    .strategy-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .strategy-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#fff}
+    .strategy-badge{font-size:7px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px;background:rgba(0,255,136,0.12);color:var(--green)}
+    .strategy-badge.inactive{background:rgba(124,139,171,0.1);color:var(--dim)}
+    .strategy-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+    .s-stat{background:var(--bg);border-radius:6px;padding:8px}
+    .s-stat-label{font-size:7px;letter-spacing:1px;color:var(--dim);margin-bottom:3px}
+    .s-stat-value{font-size:12px;font-weight:700}
+
+    /* Progress */
+    .progress-wrap{margin-bottom:10px}
+    .progress-header{display:flex;justify-content:space-between;font-size:7px;letter-spacing:1px;color:var(--muted);margin-bottom:4px}
+    .progress-track{height:3px;background:var(--bg);border-radius:2px;overflow:hidden}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:2px;transition:width .6s}
+
+    /* Coins */
+    .coins-title{font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:8px}
+    .coin-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0d1420}
+    .coin-row:last-child{border-bottom:none}
+    .coin-left{display:flex;align-items:center;gap:8px}
+    .coin-sym{font-size:11px;font-weight:700;color:#fff;width:32px}
+    .coin-price{font-size:10px;font-weight:700;color:#fff}
+    .signal-badge{font-size:7px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px}
+    .signal-badge.koop{background:rgba(0,255,136,0.12);color:var(--green)}
+    .signal-badge.verkoop{background:rgba(255,68,102,0.12);color:var(--red)}
+    .signal-badge.wachten,.signal-badge.houd{background:rgba(124,139,171,0.08);color:var(--dim)}
+
+    /* Trade log */
+    .tradelog{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+    .log-title{font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:10px}
+    .log-tabs{display:flex;gap:6px;margin-bottom:10px}
+    .log-tab{font-size:8px;font-weight:700;padding:4px 10px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--dim);font-family:'Space Mono',monospace;transition:all .2s}
+    .log-tab.active{background:rgba(64,136,240,0.12);color:var(--blue);border-color:rgba(64,136,240,0.3)}
+    .trade-item{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #0d1420}
+    .trade-item:last-child{border-bottom:none}
+    .trade-badge{font-size:7px;font-weight:700;letter-spacing:1px;padding:2px 5px;border-radius:3px;white-space:nowrap}
+    .trade-badge.buy{background:rgba(0,255,136,0.1);color:var(--green)}
+    .trade-badge.sell{background:rgba(255,68,102,0.1);color:var(--red)}
+    .trade-coin{font-size:10px;font-weight:700;color:var(--text)}
+    .trade-detail{font-size:8px;color:var(--muted);margin-top:1px}
+    .trade-time{font-size:8px;color:var(--muted);text-align:right}
+    .trade-empty{text-align:center;color:#2a3a55;font-size:10px;padding:16px 0;line-height:1.8}
+
+    /* Modals */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:998;display:none;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.show{display:flex}
+    .modal{background:var(--surface);border-radius:14px;padding:24px;max-width:340px;width:100%;text-align:center}
+    .modal-title{font-size:14px;font-weight:700;margin-bottom:10px}
+    .modal-body{font-size:10px;color:var(--dim);line-height:1.8;margin-bottom:18px}
+    .modal-btns{display:flex;gap:10px}
+    .pw-input{width:100%;background:#0a0d14;border:1px solid var(--border);border-radius:8px;padding:11px 40px 11px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:13px;outline:none;letter-spacing:2px;margin-bottom:10px}
+    .pw-input:focus{border-color:#2a3a55}
+    .pw-wrap{position:relative}
+    .pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);cursor:pointer;font-size:13px}
+    .pin-error{font-size:8px;color:var(--red);text-align:center;min-height:12px;margin-bottom:10px}
+
+    /* Toast */
+    .toast{position:fixed;top:max(var(--safe),16px);left:50%;transform:translateX(-50%);border-radius:10px;padding:12px 20px;text-align:center;z-index:999;display:none;min-width:220px}
+    .toast.show{display:block;animation:toastIn .4s ease}
+    .toast.green{background:#0a2018;border:1px solid rgba(0,255,136,.3)}
+    .toast.red{background:#1a0a0e;border:1px solid rgba(255,68,102,.3)}
+    .toast.amber{background:#1a1200;border:1px solid rgba(240,160,64,.3)}
+    .toast-title{font-size:13px;margin-bottom:3px}
+    .toast-sub{font-size:9px;color:var(--dim)}
+
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  </style>
+</head>
+<body>
+
+<!-- Login scherm -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  flex-direction:column;gap:0;
+">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;letter-spacing:-1px">
+      CRYPTO<span style="color:var(--green)">BOT</span>
+    </div>
+    <div style="font-size:9px;letter-spacing:3px;color:var(--muted);margin-top:4px">DUAL STRATEGY DASHBOARD</div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:340px">
+    <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:14px">TOEGANGSTOKEN</div>
+    <div style="position:relative;margin-bottom:10px">
+      <input type="password" id="loginTokenInput"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 40px 12px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;letter-spacing:2px"
+        placeholder="Voer je token in"
+        autocomplete="off" autocorrect="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')doLogin()"
+      />
+      <button onclick="toggleLoginPw()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px">👁</button>
+    </div>
+    <div style="font-size:8px;color:var(--red);min-height:14px;margin-bottom:12px;text-align:center" id="loginError"></div>
+    <button onclick="doLogin()" id="loginBtn"
+      style="width:100%;padding:13px;background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3);border-radius:8px;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;letter-spacing:2px;cursor:pointer;transition:all .2s">
+      INLOGGEN
+    </button>
+    <div style="font-size:8px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.7">
+      Token wordt alleen in het geheugen bewaard<br>en nooit opgeslagen of verstuurd
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><div class="toast-title" id="toastTitle"></div><div class="toast-sub" id="toastSub"></div></div>
+
+<!-- PIN modal -->
+<div class="modal-overlay" id="pinModal">
+  <div class="modal" style="border-color:rgba(64,136,240,.3)">
+    <div class="modal-title" style="color:var(--blue)">🔒 WACHTWOORD VEREIST</div>
+    <div class="modal-body" id="pinModalBody">Voer je wachtwoord in om door te gaan.</div>
+    <div class="pw-wrap">
+      <input type="password" class="pw-input" id="pwInput" placeholder="••••••••••" autocomplete="off" onkeydown="if(event.key==='Enter')checkPin()"/>
+      <button class="pw-eye" onclick="togglePw()">👁</button>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+    <div class="modal-btns">
+      <button class="btn btn-sm" onclick="cancelPin()" style="flex:1;padding:11px">ANNULEER</button>
+      <button class="btn" id="pwSubmitBtn" onclick="checkPin()" style="flex:1;padding:11px;background:rgba(64,136,240,.15);color:var(--blue);border:1px solid rgba(64,136,240,.3)">BEVESTIG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Live confirm modal -->
+<div class="modal-overlay" id="liveModal">
+  <div class="modal" style="border-color:rgba(255,68,102,.3)">
+    <div class="modal-title" style="color:var(--red)">⚠️ LIVE HANDEL ACTIVEREN</div>
+    <div class="modal-body">Je schakelt over naar <b style="color:var(--red)">echte handel met echt geld</b>.<br><br>De bot plaatst automatisch orders op je Bitvavo account. Je kunt geld verliezen.</div>
+    <div class="modal-btns">
+      <button class="btn btn-sm" onclick="cancelLive()" style="flex:1;padding:11px">ANNULEER</button>
+      <button class="btn" onclick="confirmLive()" style="flex:1;padding:11px;background:rgba(255,68,102,.15);color:var(--red);border:1px solid rgba(255,68,102,.3)">JA, LIVE</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="logo">CRYPTO<span>BOT</span></div>
+      <div class="subtitle">DUAL STRATEGY DASHBOARD</div>
+      <div class="status-row">
+        <div class="status-dot stopped" id="statusDot"></div>
+        <div class="status-text" id="statusText">VERBINDEN...</div>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-start" id="botBtn" onclick="toggleBot()">▶ START</button>
+      <button class="btn btn-sm" onclick="pollStatus()">↻</button>
+      <button class="btn btn-sm" onclick="resetAll()" style="color:rgba(255,68,102,.5);border-color:rgba(255,68,102,.2)">RESET</button>
+    </div>
+  </div>
+
+  <!-- Mode bar -->
+  <div class="mode-bar">
+    <div>
+      <div class="mode-label">HANDELSMODUS</div>
+      <div class="mode-value droogloop" id="modeValue">DROOGLOOP</div>
+      <div class="live-warning" id="liveWarning">⚠ Echte orders worden geplaatst!</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div>
+        <div class="mode-label" style="margin-bottom:4px">ACTIEVE STRATEGIE (live)</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn" id="btnS1" onclick="setActiveStrategy('strategie-1')" style="font-size:8px;padding:5px 10px">S1</button>
+          <button class="btn" id="btnS2" onclick="setActiveStrategy('strategie-2')" style="font-size:8px;padding:5px 10px">S2</button>
+        </div>
+      </div>
+      <div class="toggle-wrap">
+        <span class="toggle-label">Droogloop</span>
+        <label class="toggle"><input type="checkbox" id="liveToggle" onchange="onLiveToggle()"/><span class="toggle-slider"></span></label>
+        <span class="toggle-label" style="color:var(--red)">Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balance -->
+  <div class="balance-bar">
+    <div class="balance-title">BITVAVO SALDO</div>
+    <div class="balance-grid">
+      <div><div class="bal-label">EUR</div><div class="bal-value" id="balEur">—</div></div>
+      <div><div class="bal-label">BTC</div><div class="bal-value" id="balBtc">—</div></div>
+      <div><div class="bal-label">ETH</div><div class="bal-value" id="balEth">—</div></div>
+      <div><div class="bal-label">SOL</div><div class="bal-value" id="balSol">—</div></div>
+      <div><div class="bal-label">XRP</div><div class="bal-value" id="balXrp">—</div></div>
+      <div><div class="bal-label">ADA</div><div class="bal-value" id="balAda">—</div></div>
+    </div>
+  </div>
+
+  <!-- Strategie vergelijking -->
+  <div class="strategies-grid" id="strategiesGrid"></div>
+
+  <!-- Prijzen + signalen -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div class="coins-title">SIGNALEN — S1 (30s)</div>
+      <div id="coinsS1"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div class="coins-title">SIGNALEN — S2 (1u)</div>
+      <div id="coinsS2"></div>
+    </div>
+  </div>
+
+  <!-- Trade logs -->
+  <div class="tradelog">
+    <div class="log-title">TRADE LOGBOEK</div>
+    <div class="log-tabs">
+      <button class="log-tab active" id="tabS1" onclick="switchTab('strategie-1')">STRATEGIE 1</button>
+      <button class="log-tab" id="tabS2" onclick="switchTab('strategie-2')">STRATEGIE 2</button>
+    </div>
+    <div id="tradeList"></div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://cryptobot-proxy.onrender.com';
+let APP_TOKEN = ''; // wordt ingevuld via loginscherm, nooit in broncode
+const COINS     = [
+  {id:'bitcoin', symbol:'BTC', market:'BTC-EUR'},
+  {id:'ethereum',symbol:'ETH', market:'ETH-EUR'},
+  {id:'solana',  symbol:'SOL', market:'SOL-EUR'},
+  {id:'ripple',  symbol:'XRP', market:'XRP-EUR'},
+  {id:'cardano', symbol:'ADA', market:'ADA-EUR'},
+];
+const STARTKAPITAAL = 10000;
+const MA_SHORT = 5, MA_LONG = 20;
+
+let lastState    = null;
+let activeTab    = 'strategie-1';
+let pinPurpose   = '';
+let pollTimer    = null;
+
+function authHeaders() {
+  return {'Content-Type':'application/json','x-app-token':APP_TOKEN};
+}
+function fmt(n,d=2){ return Number(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function calcMA(p,n){ if(!p||p.length<n)return null; return p.slice(-n).reduce((a,b)=>a+b,0)/n; }
+function getSignal(p){
+  const s=calcMA(p,MA_SHORT),l=calcMA(p,MA_LONG);
+  if(!s||!l) return 'WACHTEN';
+  if(s>l*1.002) return 'KOOP';
+  if(s<l*0.998) return 'VERKOOP';
+  return 'HOUD';
+}
+
+// ── Poll ──────────────────────────────────────────────────
+async function pollStatus(){
+  try {
+    const res  = await fetch(`${PROXY}/status`,{headers:authHeaders()});
+    const data = await res.json();
+    lastState  = data;
+    renderAll(data);
+    setStatus(data.running?'live':'stopped', data.running?`ACTIEF · ${new Date().toLocaleTimeString('nl-NL')}`:'BOT GESTOPT');
+  } catch { setStatus('error','SERVER NIET BEREIKBAAR'); }
+}
+
+function setStatus(state,text){
+  document.getElementById('statusDot').className='status-dot '+state;
+  document.getElementById('statusText').textContent=text;
+}
+
+// ── Render ────────────────────────────────────────────────
+function renderAll(s){
+  // Bot button
+  const btn=document.getElementById('botBtn');
+  btn.textContent=s.running?'⏹ STOP':'▶ START';
+  btn.className='btn btn-start'+(s.running?' active':'');
+
+  // Live toggle
+  document.getElementById('liveToggle').checked=s.liveMode;
+  const mv=document.getElementById('modeValue');
+  mv.textContent=s.liveMode?'LIVE HANDEL':'DROOGLOOP';
+  mv.className='mode-value '+(s.liveMode?'live':'droogloop');
+  document.getElementById('liveWarning').style.display=s.liveMode?'block':'none';
+
+  // Active strategy buttons
+  ['strategie-1','strategie-2'].forEach(id=>{
+    const isActive=id===s.activeStrategyId;
+    const btn=document.getElementById(id==='strategie-1'?'btnS1':'btnS2');
+    btn.style.background=isActive?'rgba(0,255,136,.15)':'rgba(124,139,171,.1)';
+    btn.style.color=isActive?'var(--green)':'var(--dim)';
+    btn.style.borderColor=isActive?'rgba(0,255,136,.3)':'var(--border)';
+  });
+
+  // Balance
+  const b=s.realBalance||{};
+  document.getElementById('balEur').textContent='€'+(b.EUR||'—');
+  document.getElementById('balBtc').textContent=b.BTC||'—';
+  document.getElementById('balEth').textContent=b.ETH||'—';
+  document.getElementById('balSol').textContent=b.SOL||'—';
+  document.getElementById('balXrp').textContent=b.XRP||'—';
+  document.getElementById('balAda').textContent=b.ADA||'—';
+
+  // Strategy cards
+  const grid=document.getElementById('strategiesGrid');
+  if(s.strategies){
+    grid.innerHTML=s.strategies.map(st=>{
+      const isActive=st.name===s.activeStrategyId;
+      const pnl=st.totalValue-STARTKAPITAAL;
+      const pnlPct=pnl/STARTKAPITAAL*100;
+      const progress=Math.min(100,st.totalValue/(STARTKAPITAAL*2)*100);
+      return `<div class="strategy-card${isActive?' active-strategy':''}">
+        <div class="strategy-header">
+          <div class="strategy-name">${st.name==='strategie-1'?'STRATEGIE 1':'STRATEGIE 2'}</div>
+          <span class="signal-badge${isActive?'':' inactive'}">${isActive?'ACTIEF':'PAPER'}</span>
+        </div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:8px">${st.name==='strategie-1'?'MA5/MA20 · 30s · 0.2%':'MA5/MA20+RSI · 1u · 0.75% · SL/TP'}</div>
+        <div class="strategy-stats">
+          <div class="s-stat"><div class="s-stat-label">TOTAAL</div><div class="s-stat-value" style="color:#c8d4e8">€${fmt(st.totalValue)}</div></div>
+          <div class="s-stat"><div class="s-stat-label">CASH</div><div class="s-stat-value" style="color:#7c8fab">€${fmt(st.cash)}</div></div>
+          <div class="s-stat"><div class="s-stat-label">WINST/VERLIES</div><div class="s-stat-value" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}€${fmt(pnl)} (${fmt(pnlPct)}%)</div></div>
+          <div class="s-stat"><div class="s-stat-label">DOEL</div><div class="s-stat-value" style="color:var(--muted)">€${fmt(STARTKAPITAAL*2,0)}</div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-header"><span>AFROMING</span><span>${fmt(progress,1)}%</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Coin signals
+  const ph=s.priceHistory||{};
+  ['S1','S2'].forEach(suffix=>{
+    const hist=suffix==='S1'?ph.strategie1:ph.strategie2;
+    const el=document.getElementById('coins'+suffix);
+    if(!el||!hist) return;
+    el.innerHTML=COINS.map(c=>{
+      const prices=hist[c.id]||[];
+      const lp=prices.slice(-1)[0]||0;
+      const sig=getSignal(prices);
+      return `<div class="coin-row">
+        <div class="coin-left">
+          <span class="coin-sym">${c.symbol}</span>
+          <span class="coin-price">${lp?'€'+fmt(lp):'—'}</span>
+        </div>
+        <span class="signal-badge ${sig.toLowerCase()}">${sig}</span>
+      </div>`;
+    }).join('');
+  });
+
+  // Trade log
+  renderTrades(s);
+}
+
+function renderTrades(s){
+  const tl=document.getElementById('tradeList');
+  if(!s||!s.strategies) return;
+  const st=s.strategies.find(x=>x.name===activeTab);
+  if(!st||!st.trades||!st.trades.length){
+    tl.innerHTML='<div class="trade-empty">Geen trades — bot actief in droogloop</div>';
+    return;
+  }
+  tl.innerHTML=st.trades.map(t=>`
+    <div class="trade-item">
+      <span class="trade-badge ${t.side}">${t.side==='buy'?'KOOP':'VERKOOP'}</span>
+      <div><div class="trade-coin">${t.coin}</div><div class="trade-detail">${fmt(t.amount,4)} × €${fmt(t.fillPrice)} · fee €${fmt(t.feesEur,3)}</div></div>
+      <div class="trade-time">${typeof t.time==='number'?new Date(t.time).toLocaleTimeString('nl-NL'):t.time}</div>
+    </div>`).join('');
+}
+
+function switchTab(id){
+  activeTab=id;
+  document.getElementById('tabS1').className='log-tab'+(id==='strategie-1'?' active':'');
+  document.getElementById('tabS2').className='log-tab'+(id==='strategie-2'?' active':'');
+  if(lastState) renderTrades(lastState);
+}
+
+// ── Bot controls ──────────────────────────────────────────
+async function toggleBot(){
+  if(!lastState) return;
+  openPin(lastState.running?'botstop':'botstart',
+    lastState.running?'Voer je wachtwoord in om de bot te stoppen.':'Voer je wachtwoord in om de bot te starten.');
+}
+async function doToggleBot(running){
+  await fetch(`${PROXY}/bot/${running?'stop':'start'}`,{method:'POST',headers:authHeaders()});
+  await pollStatus();
+}
+async function resetAll(){
+  openPin('reset','Voer je wachtwoord in om alle portfolios te resetten.');
+}
+async function doReset(){
+  await fetch(`${PROXY}/bot/reset`,{method:'POST',headers:authHeaders(),body:JSON.stringify({})});
+  await pollStatus();
+}
+async function setActiveStrategy(id){
+  openPin('activestrategy',`Voer je wachtwoord in om strategie "${id}" als live-strategie in te stellen.`);
+  window._pendingStrategyId=id;
+}
+async function doSetActiveStrategy(id){
+  await fetch(`${PROXY}/bot/active-strategy`,{method:'POST',headers:authHeaders(),body:JSON.stringify({strategyId:id})});
+  await pollStatus();
+  showToast('green','✓ Actieve strategie gewijzigd',id);
+}
+
+// ── Live toggle ───────────────────────────────────────────
+function onLiveToggle(){
+  const tog=document.getElementById('liveToggle');
+  if(tog.checked){ openPin('live','Voer je wachtwoord in om Live handel te activeren.'); }
+  else { setLiveMode(false); }
+}
+function cancelLive(){ document.getElementById('liveModal').classList.remove('show'); document.getElementById('liveToggle').checked=false; }
+async function confirmLive(){ document.getElementById('liveModal').classList.remove('show'); await setLiveMode(true); showToast('red','⚡ LIVE MODUS ACTIEF','Echte orders worden geplaatst'); }
+async function setLiveMode(enabled){ await fetch(`${PROXY}/bot/live`,{method:'POST',headers:authHeaders(),body:JSON.stringify({enabled})}); await pollStatus(); }
+
+// ── PIN ───────────────────────────────────────────────────
+function openPin(purpose,message){
+  pinPurpose=purpose;
+  document.getElementById('pwInput').value='';
+  document.getElementById('pinError').textContent='';
+  document.getElementById('pinModalBody').textContent=message;
+  document.getElementById('pinModal').classList.add('show');
+  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+}
+function cancelPin(){ document.getElementById('pinModal').classList.remove('show'); document.getElementById('liveToggle').checked=!!lastState?.liveMode; }
+function togglePw(){ const i=document.getElementById('pwInput'); i.type=i.type==='password'?'text':'password'; }
+
+async function checkPin(){
+  const pw=document.getElementById('pwInput').value;
+  if(!pw) return;
+  const btn=document.getElementById('pwSubmitBtn');
+  btn.disabled=true; btn.textContent='...';
+  try {
+    const res=await fetch(`${PROXY}/bot/checkpin`,{method:'POST',headers:authHeaders(),body:JSON.stringify({pin:pw})});
+    const data=await res.json();
+    if(data.ok){
+      document.getElementById('pinModal').classList.remove('show');
+      document.getElementById('pwInput').value='';
+      btn.disabled=false; btn.textContent='BEVESTIG';
+      if(pinPurpose==='live')                document.getElementById('liveModal').classList.add('show');
+      else if(pinPurpose==='botstart')       await doToggleBot(false);
+      else if(pinPurpose==='botstop')        await doToggleBot(true);
+      else if(pinPurpose==='reset')          await doReset();
+      else if(pinPurpose==='activestrategy') await doSetActiveStrategy(window._pendingStrategyId);
+    } else {
+      document.getElementById('pinError').textContent='✕ '+(data.error||'Onjuist wachtwoord');
+      document.getElementById('pwInput').value='';
+      document.getElementById('pwInput').focus();
+      btn.disabled=false; btn.textContent='BEVESTIG';
+      const m=document.getElementById('pinModal').querySelector('.modal');
+      m.style.transform='translateX(6px)';
+      setTimeout(()=>m.style.transform='translateX(-6px)',80);
+      setTimeout(()=>m.style.transform='translateX(2px)',160);
+      setTimeout(()=>m.style.transform='translateX(0)',240);
+    }
+  } catch {
+    document.getElementById('pinError').textContent='✕ Verbindingsfout';
+    btn.disabled=false; btn.textContent='BEVESTIG';
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(type,title,sub){
+  const t=document.getElementById('toast');
+  document.getElementById('toastTitle').textContent=title;
+  document.getElementById('toastSub').textContent=sub||'';
+  t.className='toast '+type+' show';
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+// ── Login ─────────────────────────────────────────────────
+function toggleLoginPw(){
+  const i=document.getElementById('loginTokenInput');
+  i.type=i.type==='password'?'text':'password';
+}
+
+async function doLogin(){
+  const token=document.getElementById('loginTokenInput').value.trim();
+  if(!token){ document.getElementById('loginError').textContent='Voer je token in'; return; }
+  const btn=document.getElementById('loginBtn');
+  btn.textContent='VERBINDEN...'; btn.disabled=true;
+  // Test token door /status aan te roepen
+  try {
+    const res=await fetch(`${PROXY}/status`,{headers:{'Content-Type':'application/json','x-app-token':token}});
+    if(res.status===401){ throw new Error('Ongeldig token'); }
+    const data=await res.json();
+    APP_TOKEN=token; // sla op in geheugen
+    document.getElementById('loginScreen').style.display='none';
+    lastState=data;
+    renderAll(data);
+    setStatus(data.running?'live':'stopped',data.running?`ACTIEF · ${new Date().toLocaleTimeString('nl-NL')}`:'BOT GESTOPT');
+    pollTimer=setInterval(pollStatus,30000);
+  } catch(e){
+    document.getElementById('loginError').textContent='✕ '+(e.message||'Verbinding mislukt');
+    btn.textContent='INLOGGEN'; btn.disabled=false;
+  }
+}
+
+// Focus op input bij laden
+setTimeout(()=>document.getElementById('loginTokenInput').focus(),200);
+
+// ── Init ──────────────────────────────────────────────────
+// Geen auto-poll — wacht op login
+// pollStatus en pollTimer starten pas na succesvolle login
+</script>
+</body>
+</html>
